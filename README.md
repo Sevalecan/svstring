@@ -1,0 +1,2 @@
+#svstring
+svstring is a C++ library intended to bring the ease of use of python strings to C++. The current primary goals are to subclass the existing string class such to extend it with a few pythonic string functions and perhaps more importantly to implement a format() function to replace printf and hopefully get us away from using streams which can be quite cumbersome and tedious, especially when you're trying to control the precision of your output.
