@@ -1,3 +1,1 @@
-This project aims to be a string library with similar functionality to that of Python strings. The one 
-major feature I seek to provide with this is python string formatting so that we can support std::string 
-and other types with functionality similar to printf instead of streams.
+This project aims to be a string library with similar functionality to that of Python strings. The one major feature I seek to provide with this is python string formatting so that we can support std::string and other types with functionality similar to printf instead of streams.
