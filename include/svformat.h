@@ -1,5 +1,5 @@
-#ifndef PYFORMAT_H
-#define PYFORMAT_H
+#ifndef SVFORMAT_H
+#define SVFORMAT_H
 #include <cstdio>
 #include <iostream>
 #include <string>
@@ -7,7 +7,7 @@
 #include <array>
 #include <bitset>
 
-namespace pyformat
+namespace svstring
 {
 
     struct _Format
@@ -38,7 +38,7 @@ namespace pyformat
 
     }
 
-    class VarArg
+    class _VarArg
     {
         enum
         {
@@ -56,10 +56,10 @@ namespace pyformat
         std::string text_data;
         int type;
     public:
-        VarArg(const int in) { data.i_a = in; type = A_INT; }
-        VarArg(const double in) { data.d_a = in; type = A_DOUBLE; }
-        VarArg(const char *in) { text_data = std::string(in); type = A_STRING; }
-        VarArg(const std::string in) { text_data = in; type = A_STRING; }
+        _VarArg(const int in) { data.i_a = in; type = A_INT; }
+        _VarArg(const double in) { data.d_a = in; type = A_DOUBLE; }
+        _VarArg(const char *in) { text_data = std::string(in); type = A_STRING; }
+        _VarArg(const std::string in) { text_data = in; type = A_STRING; }
 
         int getType()
         {
@@ -77,15 +77,16 @@ namespace pyformat
         }
     };
 
-    template<typename T, typename... Args> void pyformat(T a1, Args... args)
+    template<typename T, typename... Args> std::string format(T a1, Args... args)
     {
         using namespace std;
         string str{a1};
-        vector<VarArg> args_list = {args...};
+        vector<_VarArg> args_list = {args...};
 
         vector<std::string> pieces{""};
         const char *start = str.data();
         const char *end = start + str.size();
+		size_t total_size = 0;
 
         enum {
             TOP_LEVEL = 0,
@@ -107,7 +108,14 @@ namespace pyformat
             {
                 // TODO: Remove {start and end} debugging text and make it ""
                 state = INNER_PART1;
-                pieces.push_back(std::string(""));
+				if (pieces.size() > 0 && pieces.back().size() > 0)
+				{
+					total_size += pieces.back().size();
+	                pieces.push_back(std::string(""));
+				}
+				else if (pieces.size() == 0)
+					pieces.push_back(std::string(""));
+
             }
             else if (txt[0] == '}' && state != TOP_LEVEL && !is_escaped)
             {
@@ -115,7 +123,14 @@ namespace pyformat
                 // TODO: Update this to accept formatting commands after
                 // we start to parse them.
                 pieces.back().append(args_list[argument_pos++].getData());
-                pieces.push_back(std::string(""));
+
+				if (pieces.size() > 0 && pieces.back().size() > 0)
+				{
+					total_size += pieces.back().size();
+	                pieces.push_back(std::string(""));
+				}
+				else if (pieces.size() == 0)
+					pieces.push_back(std::string(""));
             }
             else if (state != TOP_LEVEL)
             {
@@ -132,8 +147,11 @@ namespace pyformat
                 txt++;
         }
 
+		std::string output;
+		output.reserve(total_size);
         for(auto &s : pieces)
-            std::cout << s;
+            output += s;
+		return output;
     }
 
 }
