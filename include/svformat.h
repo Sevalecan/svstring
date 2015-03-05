@@ -108,50 +108,53 @@ namespace svstring
 
         size_t argument_pos = 0;
 
-        for (const char *txt = start; txt < end; txt++)
-        {
-            const bool is_end = !(txt+1 < end);
-            // Will only matter for brackets.
-            const bool is_escaped = !is_end ? txt[0] == txt[1] : 0;
+		for (const char *txt = start; txt < end; txt++)
+		{
+			const bool is_end = !(txt+1 < end);
+			// Will only matter for brackets.
+			const bool is_escaped = !is_end ? txt[0] == txt[1] : 0;
 
-
-            if (txt[0] == '{' && state == TOP_LEVEL && !is_escaped && !is_end)
-            {
-                state = INNER_PART1;
+			if (txt[0] == '{' && state == TOP_LEVEL && !is_escaped && !is_end)
+			{
+				state = INNER_PART1;
 				if (pieces.size() > 0 && pieces.back().size() > 0)
 				{
 					total_size += pieces.back().size();
-	                pieces.push_back(std::string(""));
+					pieces.push_back(std::string(""));
 				}
 				else if (pieces.size() == 0)
 					pieces.push_back(std::string(""));
-
-            }
-            else if (txt[0] == '}' && state != TOP_LEVEL && !is_escaped)
-            {
-                state = TOP_LEVEL;
-                // TODO: Update this to accept formatting commands after
-                // we start to parse them.
-                pieces.back().append(args_list[argument_pos++].getData());
+			}
+			else if (txt[0] == '}' && state != TOP_LEVEL && !is_escaped)
+			{
+				state = TOP_LEVEL;
+				// TODO: Update this to accept formatting commands after
+				// we start to parse them.
+				pieces.back().append(args_list[argument_pos++].getData());
 
 				if (pieces.size() > 0 && pieces.back().size() > 0)
 				{
 					total_size += pieces.back().size();
-	                pieces.push_back(std::string(""));
+					pieces.push_back(std::string(""));
 				}
 				else if (pieces.size() == 0)
 					pieces.push_back(std::string(""));
-            }
-            else if (state != TOP_LEVEL)
-            {
-
-                // Do inner processing here.
+			}
+			else if (state != TOP_LEVEL)
+			{
+				// Do inner processing here.
+				if (state == INNER_PART1 && txt[0] == "!")
+					state = INNER_PART2;
+				if (state <= INNER_PART2 && txt[0] == ":")
+					state = INNER_PART3;
 				if (state == INNER_PART1) // field name
 				{
-					if (txt[0] != '!')
-						form_specs.back().name += txt[0]; // add to the name, since that's the state we're in
-					else
+					if(txt[0] == "!")
 						state = INNER_PART2;
+					else if (txt[0] = ":")
+					    state = INNER_PART3;
+					else
+						form_specs.back().name += txt[0]; // add to the name, since that's the state we're in
 				}
 				if (state == INNER_PART2) // conversion
 				{
