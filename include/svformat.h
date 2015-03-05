@@ -14,9 +14,20 @@ namespace svstring
     {
         enum
         {
-
+			CONVERSION = 0,
+			FILL,
+			ALIGN,
+			SIGN,
+			ALTERNATE,
+			ZERO_FILL,
+			THOUSANDS_COMMA,
+			WIDTH,
+			PRECISION,
+			TYPE
         };
         std::bitset<9> states;
+		std::string name;
+		char conversion;
         char fill;
         int align;
         int sign;
@@ -106,7 +117,6 @@ namespace svstring
 
             if (txt[0] == '{' && state == TOP_LEVEL && !is_escaped && !is_end)
             {
-                // TODO: Remove {start and end} debugging text and make it ""
                 state = INNER_PART1;
 				if (pieces.size() > 0 && pieces.back().size() > 0)
 				{
@@ -134,9 +144,23 @@ namespace svstring
             }
             else if (state != TOP_LEVEL)
             {
+
                 // Do inner processing here.
-                pieces.back() += "p.";
-                pieces.back() += txt[0];
+				if (state == INNER_PART1) // field name
+				{
+					if (txt[0] != '!')
+						form_specs.back().name += txt[0]; // add to the name, since that's the state we're in
+					else
+						state = INNER_PART2;
+				}
+				if (state == INNER_PART2) // conversion
+				{
+					// TODO: Throw an exception on more than one character on a conversion.
+					if (txt[0] != ':')
+						form_specs.back().name += txt[0];
+					else
+						state = INNER_PART3;
+				}
             }
             else if (state == TOP_LEVEL)
             {
