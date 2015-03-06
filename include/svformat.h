@@ -166,7 +166,7 @@ namespace svstring
 				format.align = spec_str[achar_loc];
 				format.states[_Format::ALIGN] = 1;
 				
-				second_half = spec_str.data()+achar_loc+1;
+				second_half = spec_str.substr(achar_loc+1);
 				// increase search offset for 0
 				++zero_offset;
 			}
