@@ -11,7 +11,7 @@ int main()
 	using std::endl;
 	using svstring::format;
 
-	string form{"This is a \"{}\", this is only a \"{}\"."};
+	string form{"This is a \"{}\", this is only a \"{penis}\". {:0.5g}"};
 
 	cout << "Format: '" << form << "'" << endl;
 	cout << svstring::format(form, std::string("test"), "test") << endl;
