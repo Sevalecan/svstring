@@ -10,7 +10,11 @@
 
 namespace svstring
 {
-
+	// TODO: Possibly combine some of the format data and the format() and all
+	// functions it calls into a class object so that they can share
+	// a single state. Make sure this doesn't conflict with the idea that we
+	// can overload templates with custom version as a user.
+	
 	struct Format
 	{
 
@@ -46,9 +50,31 @@ namespace svstring
 		}
 	};
 	
+	// So we can associate an output string with a single form when passing to the converter.
+	struct _FormPack
+	{
+		Format form;
+		std::string *ostr;
+		_FormPack(std::string &p_ostr, const Format &p_form) : form(p_form), ostr(&p_ostr) {}
+		_FormPack(const _FormPack &ipair) : form(ipair.form), ostr(ipair.ostr) {}
+		
+	};
+	
 	typedef std::vector<std::pair<bool, std::string>> FormList;
-	typedef std::map<std::string, Format> NamedForms;
-	typedef std::vector<Format> NumericForms;
+	//typedef std::map<std::string, Format> NamedForms;
+	//typedef std::vector<Format> NumericForms;
+	typedef std::multimap<std::string, _FormPack> _Forms;
+	
+	struct _FormatState
+	{
+		int32_t numeric_count;
+		_Forms form_list;
+		
+		_FormatState()
+		{
+			numeric_count = 0;
+		}
+	};
 
 	class _VarArg
 	{
@@ -279,17 +305,22 @@ namespace svstring
 		return forms;
 	}
 	
-	template<typename T> std::string convert(Format &form, const T &a1);
+	template<typename T> void convert(_FormPack &formp, const T &a1);
 	// template<typename T> std::string convert(FormList::iterator &form, const T *a1);
 	
-	template<> std::string convert<std::string>(Format &form, const std::string &a1)
+	template<> void convert<std::string>(_FormPack &formp, const std::string &a1)
 	{
-		return a1;
+		*(formp.ostr) = a1;
 	}
 	
-	template<> std::string convert<double>(Format &form, const double &a1)
+	template<> void convert<double>(_FormPack &formp, const double &a1)
 	{
-		return std::to_string(a1);
+		*(formp.ostr) = std::to_string(a1);
+	}
+	
+	template<> void convert<int>(_FormPack &formp, const int &a1)
+	{
+		*(formp.ostr) = std::to_string(a1);
 	}
 	/*
 	template<> std::string convert<const char>(FormList::iterator &form, const char *a1)
@@ -301,19 +332,26 @@ namespace svstring
 	// TODO: Make a complementary function that specializes for NamedArgument as type T
 	// Also try to make it not have a cow if we're out of numeric forms, and perhaps throw a warning.. Check
 	// Python documentation for what it does in this case.
-	template<typename T> std::string _form_disambiguator(NumericForms::iterator &numeric_form, NamedForms &named_forms, T &a1)
+	template<typename T> void _form_disambiguator(_FormatState &format_state, T &a1)
 	{
-		return svstring::convert(numeric_form++, a1);
+		// Unnamed numeric case.
+		std::string name = std::to_string(format_state.numeric_count++);
+		auto range = format_state.form_list.equal_range(name);
+		for (auto i = range.first; i != range.second; ++i)
+		{
+			svstring::convert(i->second, a1);
+		}
 	}
 	
-	template<typename T> std::string _conv_wrapper(NumericForms::iterator &numeric_form, NamedForms &named_forms, T &a1) // final version.
+	template<typename T> void _conv_wrapper(_FormatState &format_state, T &a1) // final version.
 	{
-		return svstring::_form_disambiguator(numeric_form, named_forms, a1);
+		svstring::_form_disambiguator(format_state, a1);
 	}
 	
-	template<typename T, typename... Args> std::string _conv_wrapper(NumericForms::iterator &numeric_form, NamedForms &named_forms, T &a1, Args... args)
+	template<typename T, typename... Args> void _conv_wrapper(_FormatState &format_state, T &a1, Args... args)
 	{
-		return svstring::_form_disambiguator(numeric_form, named_forms, a1) + _form_disambiguator(numeric_form, named_forms, args...);
+		svstring::_form_disambiguator(format_state, a1);
+		svstring::_conv_wrapper(format_state, args...);
 	}
 
 	template<typename T, typename... Args> std::string format(T a1, Args... args)
@@ -322,24 +360,41 @@ namespace svstring
 		string str{a1}; // Convert it to a string if it isn't already
 		// This will allow us to use char *s or possible other new types that
 		// can be converted to strings here.
-		NumericForms numeric_forms;
-		NamedForms named_forms;
-		vector<_VarArg> args_list = {args...};
+		//NumericForms numeric_forms;
+		//NamedForms named_forms;
+		//vector<_VarArg> args_list = {args...};
 
 		size_t total_size = 0;
 		FormList forms = get_forms(str);
 
 		string output;
 		output.reserve(total_size);
+		int numbered_form = 0;
+		_FormatState out_state;
+		_Forms &out_forms = out_state.form_list;
 		
 		for (auto &s : forms)
 		{
-			Format x = parse_form(s.second);
-			if (x.name.size() == 0)
-				numeric_forms.push_back(x);
-			else
-				named_forms[x.name] = x;
+			if (s.first == true)
+			{
+				Format x = parse_form(s.second);
+				s.second.resize(0);
+			
+				if (x.name.size() == 0)
+				{
+					out_forms.emplace(std::to_string(numbered_form++), _FormPack(s.second, x));
+				}
+				else
+				{
+					out_forms.emplace(x.name, _FormPack(s.second, x));
+				}
+			}
 		}
+		
+		_conv_wrapper(out_state, args...);
+		
+		for (auto &s : forms)
+			output.append(s.second);
 
 #ifdef DEBUG
 		for (auto &s : forms)
