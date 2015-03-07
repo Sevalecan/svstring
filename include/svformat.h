@@ -51,19 +51,17 @@ namespace svstring
 	};
 	
 	// So we can associate an output string with a single form when passing to the converter.
-	struct _FormPack
+	struct FormPack
 	{
 		Format form;
 		std::string *ostr;
-		_FormPack(std::string &p_ostr, const Format &p_form) : form(p_form), ostr(&p_ostr) {}
-		_FormPack(const _FormPack &ipair) : form(ipair.form), ostr(ipair.ostr) {}
+		FormPack(std::string &p_ostr, const Format &p_form) : form(p_form), ostr(&p_ostr) {}
+		FormPack(const FormPack &ipair) : form(ipair.form), ostr(ipair.ostr) {}
 		
 	};
 	
 	typedef std::vector<std::pair<bool, std::string>> FormList;
-	//typedef std::map<std::string, Format> NamedForms;
-	//typedef std::vector<Format> NumericForms;
-	typedef std::multimap<std::string, _FormPack> _Forms;
+	typedef std::multimap<std::string, FormPack> _Forms;
 	
 	struct _FormatState
 	{
@@ -73,66 +71,6 @@ namespace svstring
 		_FormatState()
 		{
 			numeric_count = 0;
-		}
-	};
-
-	class _VarArg
-	{
-
-		enum
-		{
-			A_INT = 0,
-			A_DOUBLE,
-			A_STRING
-		};
-
-		union
-		{
-			int i_a;
-			double d_a;
-			long double ld_a;
-		} data;
-		std::string text_data;
-		int type;
-	public:
-
-		_VarArg(const int in)
-		{
-			data.i_a = in;
-			type = A_INT;
-		}
-
-		_VarArg(const double in)
-		{
-			data.d_a = in;
-			type = A_DOUBLE;
-		}
-
-		_VarArg(const char *in)
-		{
-			text_data = std::string(in);
-			type = A_STRING;
-		}
-
-		_VarArg(const std::string in)
-		{
-			text_data = in;
-			type = A_STRING;
-		}
-
-		int getType()
-		{
-			return type;
-		}
-
-		std::string getData()
-		{
-			if (type == A_STRING)
-				return text_data;
-			else if (type == A_INT)
-				return std::to_string(data.i_a);
-			else
-				return std::to_string(data.d_a);
 		}
 	};
 	
@@ -305,20 +243,20 @@ namespace svstring
 		return forms;
 	}
 	
-	template<typename T> void convert(_FormPack &formp, const T &a1);
+	template<typename T> void convert(FormPack &formp, const T &a1);
 	// template<typename T> std::string convert(FormList::iterator &form, const T *a1);
 	
-	template<> void convert<std::string>(_FormPack &formp, const std::string &a1)
+	template<> void convert<std::string>(FormPack &formp, const std::string &a1)
 	{
 		*(formp.ostr) = a1;
 	}
 	
-	template<> void convert<double>(_FormPack &formp, const double &a1)
+	template<> void convert<double>(FormPack &formp, const double &a1)
 	{
 		*(formp.ostr) = std::to_string(a1);
 	}
 	
-	template<> void convert<int>(_FormPack &formp, const int &a1)
+	template<> void convert<int>(FormPack &formp, const int &a1)
 	{
 		*(formp.ostr) = std::to_string(a1);
 	}
@@ -358,11 +296,6 @@ namespace svstring
 	{
 		using namespace std;
 		string str{a1}; // Convert it to a string if it isn't already
-		// This will allow us to use char *s or possible other new types that
-		// can be converted to strings here.
-		//NumericForms numeric_forms;
-		//NamedForms named_forms;
-		//vector<_VarArg> args_list = {args...};
 
 		size_t total_size = 0;
 		FormList forms = get_forms(str);
@@ -382,11 +315,11 @@ namespace svstring
 			
 				if (x.name.size() == 0)
 				{
-					out_forms.emplace(std::to_string(numbered_form++), _FormPack(s.second, x));
+					out_forms.emplace(std::to_string(numbered_form++), FormPack(s.second, x));
 				}
 				else
 				{
-					out_forms.emplace(x.name, _FormPack(s.second, x));
+					out_forms.emplace(x.name, FormPack(s.second, x));
 				}
 			}
 		}
